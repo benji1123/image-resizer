@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 def ALPHA():
     return -0.5
@@ -8,13 +8,13 @@ def ALPHA():
 def main():
     # Read image
     inputImg = plt.imread('img_example_lr.png')
-    x = plt.imshow(list(inputImg))
+    _temp = plt.imshow(list(inputImg))
     plt.show()
-    scaleFactor = 1.5
 
     # call resizing function
+    scaleFactor = 1.5
+    print('starting...')
     dst = resizeImage(inputImg, scaleFactor)
-    print('Completed!')
 
     # plotting everything
     imageDict = {
@@ -36,14 +36,14 @@ def zeroMatrix(w, h):
     * xk = interpolation-node 
 '''
 #Plot a dictionary of figures [2]: 
-def plotHelper(figures, nrows = 2, ncols=1):
-    fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows)
-    for ind,title in enumerate(figures):
-        axeslist.ravel()[ind].imshow(figures[title])
-        axeslist.ravel()[ind].set_title(title)
+def plotHelper(figures, numRows = 2, numCols=1):
+    fig, axes = plt.subplots(ncols=numCols, nrows=numRows)
+    for i,title in enumerate(figures):
+        axes.ravel()[i].imshow(figures[title])
+        axes.ravel()[i].set_title(title)
     plt.tight_layout()
 
-# Mask (convolution matrix) which is piece-wise
+# Mask (convolution matrix) piece-wise 
 '''
 "interpolation kernels can be effectively used to create new interpolation algorithms. 
 The cubic convolution algorithm is derived from a set of conditions..."
@@ -54,18 +54,21 @@ def convMask(s):
         return 0
     # [-1,1]
     elif 0 <= abs(s) <=1: 
-        return (ALPHA()+2)*(abs(s)**3)-(ALPHA()+3)*(abs(s)**2)+1
+        return (ALPHA()+2) * abs(s)**3 - (ALPHA()+3) * abs(s)**2 + 1
     # (1,2], [-2,-1)
     else: 
-        return ALPHA()*(abs(s)**3)-(5*ALPHA())*(abs(s)**2)+(8*ALPHA())*abs(s)-4*ALPHA()
+        return ALPHA()* abs(s)**3 - 5*ALPHA() * abs(s)**2 + 8*ALPHA() * abs(s)- 4*ALPHA()
 
+# return the part after the decimal-point of a num (i.e. 1.5 -> 0.5)
 def decimalPart(num): 
     return int(str(num).split('.')[-1])
 
-# Bicubic operation
+# Bicubic Operation
 def resizeImage(img, scaleFactor=2):
-    #Get image size
-    H,W,C = img.shape
+    #store dim before image is padded
+    heightNoPad = img.shape[0]
+    widthNoPad = img.shape[1]
+    numChannels = img.shape[2]
     print("\n\ninput-image dimensions:", img.shape)
 
     ''' each original-pixel is used as a centroid of an interpolation-box that stretches outwards in 4 dirs;
@@ -77,44 +80,49 @@ def resizeImage(img, scaleFactor=2):
 
     # ...............................................................
 
-    dH, dW = int((H*scaleFactor)//1), int((W*scaleFactor)//1)
-    dst = np.zeros((dH, dW, 3)) # output buffer
-    print("output-image dimensions will be: ", dst.shape)
-    h = 1/scaleFactor # sampling-increment
+    # compute image parameters
+    newHight, newWidth = int(heightNoPad*scaleFactor), int(widthNoPad*scaleFactor)
+    outputImage = np.zeros((newHight, newWidth, 3)) # output buffer
+    samplingIncrement = 1/scaleFactor # sampling-increment
+
+    # console output
+    print("scale factor: ", scaleFactor)
+    print("output-image dimensions will be: ", outputImage.shape)
             
-    # draw output-image px-by-px (one color-channel at a time)
-    for j in range(dH):
-        for i in range(dW):
+    # draw new image pixel-by-pixel
+    for j in range(newHight):
+        for i in range(newWidth):
             # Image has 3 color-channels (R,G,B)
-            for channel in range(C): 
-                x, y = (i*h+2), (j*h+2)
-                mat_m = np.ones((4,4))
-                mat_m[0] = [
-                            img[int((j*h+2)-(y-y//1+1)),int((i*h+2)-(x-x//1+1)),channel],  
-                            img[int((j*h+2)-(y-y//1)),int((i*h+2)-(x-x//1+1)),channel],
-                            img[int((j*h+2)+(y//1-y+1)),int((i*h+2)-(x-x//1+1)),channel], 
-                            img[int((j*h+2)+(y//1-y+2)),int((i*h+2)-(x-x//1+1)),channel]
+            for channel in range(numChannels): 
+                x, y = (i*samplingIncrement+2), (j*samplingIncrement+2)
+                fMatrix = np.ones((4,4))
+                fMatrix[0] = [ # row 1
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)-(x-x//1+1)),channel],  
+                            img[int((j*samplingIncrement+2)-(y-y//1)),int((i*samplingIncrement+2)-(x-x//1+1)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+1)),int((i*samplingIncrement+2)-(x-x//1+1)),channel], 
+                            img[int((j*samplingIncrement+2)+(y//1-y+2)),int((i*samplingIncrement+2)-(x-x//1+1)),channel]
                             ]
-                mat_m[1] = [
-                        img[int((j*h+2)-(y-y//1+1)),int((i*h+2)-(x-x//1)),channel],
-                        img[int((j*h+2)-(y-y//1+1)),int((i*h+2)-(x-x//1)),channel],
-                        img[int((j*h+2)+(y//1-y+1)),int((i*h+2)-(x-x//1)),channel],
-                        img[int((j*h+2)+(y//1-y+2)),int((i*h+2)-(x-x//1)),channel]]
-                mat_m[2] = [
-                            img[int((j*h+2)-(y-y//1+1)),int((i*h+2)+(x//1-x+1)),channel],
-                            img[int((j*h+2)-(y-y//1+1)),int((i*h+2)+(x//1-x+1)),channel],
-                            img[int((j*h+2)+(y//1-y+1)),int((i*h+2)+(x//1-x+1)),channel],
-                            img[int((j*h+2)+(y//1-y+2)),int((i*h+2)+(x//1-x+1)),channel]]
-                mat_m[3] = [
-                            img[int((j*h+2)-(y-y//1+1)),int((i*h+2)+(x//1-x+2)),channel],
-                            img[int((j*h+2)-(y-y//1+1)),int((i*h+2)+(x//1-x+2)),channel],
-                            img[int((j*h+2)+(y//1-y+1)),int((i*h+2)+(x//1-x+2)),channel],
-                            img[int((j*h+2)+(y//1-y+2)),int((i*h+2)+(x//1-x+2)),channel]
-                            ]               
-                _s1 = np.dot(np.array([[convMask((x-x//1+1)),convMask((x-x//1)),convMask((x//1-x+1)),convMask((x//1-x+2))]]), mat_m)
+                fMatrix[1] = [ # row 2
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)-(x-x//1)),channel],
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)-(x-x//1)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+1)),int((i*samplingIncrement+2)-(x-x//1)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+2)),int((i*samplingIncrement+2)-(x-x//1)),channel]]
+                fMatrix[2] = [ # row 3
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)+(x//1-x+1)),channel],
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)+(x//1-x+1)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+1)),int((i*samplingIncrement+2)+(x//1-x+1)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+2)),int((i*samplingIncrement+2)+(x//1-x+1)),channel]]
+                fMatrix[3] = [ # row 4
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)+(x//1-x+2)),channel],
+                            img[int((j*samplingIncrement+2)-(y-y//1+1)),int((i*samplingIncrement+2)+(x//1-x+2)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+1)),int((i*samplingIncrement+2)+(x//1-x+2)),channel],
+                            img[int((j*samplingIncrement+2)+(y//1-y+2)),int((i*samplingIncrement+2)+(x//1-x+2)),channel]
+                            ]  
+                # g(x,y) some matrix mult         
+                _s1 = np.dot(np.array([[convMask((x-x//1+1)),convMask((x-x//1)),convMask((x//1-x+1)),convMask((x//1-x+2))]]), fMatrix)
                 _s2 = np.dot(_s1,np.array([[convMask((y-y//1+1))],[convMask((y-y//1))],[convMask((y//1-y+1))],[convMask((y//1-y+2))]]))
-                dst[j, i, channel] = _s2
-    return dst
+                outputImage[j, i, channel] = _s2
+    return outputImage
 
 if __name__ == '__main__':
     main()
