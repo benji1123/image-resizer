@@ -6,18 +6,15 @@ def ALPHA():
     return -0.5
 
 def main():
-   
-
-   '''......... EDIT THESE PARAMETERS ...........'''
+    # parameters
     inputImg = plt.imread('img_example_lr.png')
     scaleFactor = 2
-    # ..........................................
-
-
+    
     _temp = plt.imshow(list(inputImg))
     plt.show()
 
     # call resizing function
+    
     print('starting...')
     dst = resizeImage(inputImg, scaleFactor)
 
